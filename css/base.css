@@ -1,0 +1,134 @@
+/* ══════════════════════════════════════
+   BASE.CSS — Variables & styles globaux
+   Commission des Arbitres de Kaffrine
+══════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+  /* Couleurs principales */
+  --g950: #052e10;
+  --g900: #0a5c1e;
+  --g700: #166534;
+  --g500: #22c55e;
+  --g100: #dcfce7;
+
+  /* Or */
+  --gold:   #d97706;
+  --goldl:  #fbbf24;
+  --goldbg: #fef3c7;
+
+  /* Rouge */
+  --red:   #dc2626;
+  --redbg: #fee2e2;
+
+  /* Surfaces */
+  --bg:      #f6f5f0;
+  --surface: #ffffff;
+  --border:  #e4e1d8;
+  --text:    #1c1917;
+  --muted:   #78716c;
+
+  /* Utilitaires */
+  --radius:  12px;
+  --shadow:  0 4px 16px rgba(0,0,0,.08);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.13);
+  --tr: .18s cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── Utilitaires typographie ─── */
+.font-syne { font-family: 'Syne', sans-serif; }
+.text-muted { color: var(--muted); }
+.text-gold  { color: var(--goldl); }
+
+/* ─── Layout ─── */
+.sect {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+.sect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 26px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sect-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.45rem;
+  letter-spacing: -.5px;
+}
+.sect-title span { color: var(--g900); }
+
+/* ─── Progress bar ─── */
+.progress {
+  height: 4px;
+  background: var(--bg);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .7s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Badges ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .74rem;
+  font-weight: 600;
+}
+.badge-y { background: var(--g100); color: var(--g700); }
+.badge-n { background: var(--redbg); color: var(--red); }
+
+/* ─── État vide ─── */
+.empty {
+  text-align: center;
+  padding: 56px 20px;
+  color: var(--muted);
+  font-size: .9rem;
+}
+
+/* ─── Animations ─── */
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 8px rgba(34,197,94,.1), 0 0 0 16px rgba(34,197,94,.05); }
+  50%      { box-shadow: 0 0 0 12px rgba(34,197,94,.15), 0 0 0 24px rgba(34,197,94,.03); }
+}
+
+/* ─── Print ─── */
+@media print {
+  header, .tabbar, .form-panel, .btn, #toast,
+  .modal-bg, .card-actions, .confirm-bar, .toolbar { display: none !important; }
+  .evbody { display: block !important; }
+  .page   { display: block !important; }
+}

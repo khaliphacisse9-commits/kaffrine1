@@ -1,0 +1,100 @@
+/* ══════════════════════════════════════
+   LOGIN.CSS — Écran de connexion
+══════════════════════════════════════ */
+
+#lo {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--g950);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lo-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 80%, rgba(34,197,94,.13) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(217,119,6,.09) 0%, transparent 60%);
+}
+.lo-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.lo-box {
+  position: relative;
+  width: 380px;
+  padding: 48px 40px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  text-align: center;
+}
+.lo-emblem {
+  width: 90px; height: 90px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  overflow: hidden;
+  border: 3px solid #d4a017;
+  animation: pulse 3s ease-in-out infinite;
+  background: #fff;
+}
+.lo-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.lo-sub {
+  color: rgba(255,255,255,.4);
+  font-size: .78rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 36px;
+}
+.lo-box input {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  color: #fff;
+  font-family: inherit;
+  font-size: .95rem;
+  margin-bottom: 10px;
+  transition: border var(--tr);
+}
+.lo-box input:focus { outline: none; border-color: var(--g500); }
+.lo-box input::placeholder { color: rgba(255,255,255,.3); }
+
+.lo-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--g900), var(--g700));
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: opacity var(--tr), transform var(--tr);
+}
+.lo-btn:hover { opacity: .9; transform: translateY(-1px); }
+
+#loErr {
+  margin-top: 12px;
+  color: #f87171;
+  font-size: .85rem;
+  display: none;
+}
+.lo-hint {
+  margin-top: 20px;
+  color: rgba(255,255,255,.18);
+  font-size: .72rem;
+}

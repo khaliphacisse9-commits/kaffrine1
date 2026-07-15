@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Commission des Arbitres de Kaffrine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/login.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ══ LOGIN ══ -->
+<div id="lo">
+  <div class="lo-bg"></div><div class="lo-grid"></div>
+  <div class="lo-box">
+    <div class="lo-emblem"><img src="logo.png" alt="Logo CRA Kaffrine" style="width:70px;height:70px;border-radius:50%;object-fit:cover"></div>
+    <div class="lo-title">COMMISSION</div>
+    <div class="lo-sub">Régionale des Arbitres de KAFFRINE</div>
+    <input type="text" id="emailInput" placeholder="Email ou identifiant"
+           onkeydown="if(event.key==='Enter') document.getElementById('pwInput').focus()"
+           style="margin-bottom:8px">
+    <div style="position:relative">
+      <input type="password" id="pwInput" placeholder="Mot de passe"
+             onkeydown="if(event.key==='Enter') doLogin()"
+             style="padding-right:40px">
+      <button onclick="var i=document.getElementById('pwInput');i.type=i.type==='password'?'text':'password'"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.5);font-size:14px"
+              tabindex="-1" type="button">👁</button>
+    </div>
+    <button class="lo-btn" onclick="doLogin()" style="margin-top:10px">Accéder →</button>
+    <div id="loErr" style="display:none;margin-top:10px;color:#f87171;font-size:.85rem;text-align:center"></div>
+    <div class="lo-hint" style="margin-top:16px;line-height:2">
+      Super Admin : <strong style="color:rgba(255,255,255,.6)">superadmin</strong> / SuperAdmin2026<br>
+      Observateur : <strong style="color:rgba(255,255,255,.6)">observateur</strong> / View2026
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ARBITRE ══ -->
+<div class="modal-bg" id="arbModal">
+  <div class="modal">
+    <div class="modal-title" id="modalLbl">Ajouter un arbitre</div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div class="field"><label>Prénom</label><input type="text" id="mPrenom" placeholder="Prénom"></div>
+      <div class="field"><label>Nom</label><input type="text" id="mNom" placeholder="NOM"></div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Grade</label>
+      <select id="mGrade">
+        <option value="">-- Sélectionner --</option>
+        <option value="Eleve">Élève Arbitre</option>
+        <option value="District">Arbitre District</option>
+        <option value="Ligue">Arbitre Ligue</option>
+        <option value="Federal">Arbitre Fédéral</option>
+        <option value="Inspecteur">Inspecteur</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <div class="field"><label>Date de naissance</label><input type="date" id="mDateNaissance"></div>
+      <div class="field"><label>Lieu de naissance</label><input type="text" id="mLieuNaissance" placeholder="Lieu de naissance"></div>
+    </div>
+    <div class="field"><label>Photo (optionnel)</label><input type="file" id="mPhoto" accept="image/*"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitArb()">💾 Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL FICHE DÉTAILLÉE ARBITRE ══ -->
+<div class="modal-bg" id="arbDetailModal">
+  <div class="modal" style="max-width:680px">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+      <img id="adPhoto" src="" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--gold)">
+      <div>
+        <div id="adNom" style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700"></div>
+        <div id="adGrade" style="color:var(--muted);font-size:.9rem"></div>
+        <div id="adNaissance" style="color:var(--muted);font-size:.82rem;margin-top:2px"></div>
+        <div id="adBureauBadge" style="margin-top:4px"></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px">
+      <div class="sum-card"><div class="sum-n" id="adTauxMatch" style="color:var(--g900)">—</div><div class="sum-l">Présence matchs</div></div>
+      <div class="sum-card"><div class="sum-n" id="adTauxSem" style="color:#2563eb">—</div><div class="sum-l">Présence séminaires</div></div>
+      <div class="sum-card"><div class="sum-n" id="adNoteMoy" style="color:var(--gold)">—</div><div class="sum-l">Note moyenne</div></div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">📅 Détail des matchs</div>
+      <div id="adMatchsList" style="max-height:160px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px"></div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">🎓 Détail des séminaires</div>
+      <div id="adSemsList" style="max-height:160px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px"></div>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">⭐ Performances détaillées</div>
+      <div id="adPerfsList" style="max-height:200px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:8px"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeArbDetailModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL PERFORMANCE ══ -->
+<div class="modal-bg" id="perfModal">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-title" id="perfModalLbl">Ajouter une performance</div>
+
+    <!-- Étape 1 : choisir l'événement -->
+    <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">
+        1 — Choisir le programme ou séminaire
+      </div>
+      <div class="field">
+        <select id="pfEvenement" onchange="onPerfEvenementChange()">
+          <option value="">-- Sélectionner un événement --</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Étape 2 : choisir l'arbitre (filtré selon présents) -->
+    <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">
+        2 — Arbitre évalué (parmi les présents)
+      </div>
+      <div class="field">
+        <select id="pfArbitre">
+          <option value="">-- Choisir d'abord un événement --</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Étape 3 : évaluation -->
+    <div style="background:var(--bg);border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:10px">
+        3 — Évaluation
+      </div>
+      <div class="perf-form-grid">
+        <div class="field"><label>Note /20</label><input type="number" id="pfNote" min="0" max="20" step="0.5" placeholder="0 – 20"></div>
+        <div class="field"><label>Matchs arbitrés</label><input type="number" id="pfMatchs" min="0" placeholder="0"></div>
+        <div class="field"><label>Cartons distribués</label><input type="number" id="pfCartons" min="0" placeholder="0"></div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Commentaire / Appréciation</label>
+        <input type="text" id="pfCommentaire" placeholder="Remarques de l'évaluateur…">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitPerf()">💾 Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closePerfModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL AFFECTER MEMBRE BUREAU ══ -->
+<div class="modal-bg" id="bureauModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title" id="bureauModalTitre">Affecter un membre</div>
+
+    <!-- Type de membre -->
+    <div class="field" style="margin-bottom:16px">
+      <label>Type de membre</label>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s" id="bTypeArbitreLabel">
+          <input type="radio" name="bTypeRadio" value="arbitre" id="bTypeArbitre" onchange="document.getElementById('bType').value='arbitre';toggleBureauType('arbitre')" checked>
+          <span>👤 Arbitre enregistré</span>
+        </label>
+        <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s" id="bTypeExterneLabel">
+          <input type="radio" name="bTypeRadio" value="externe" id="bTypeExterne" onchange="document.getElementById('bType').value='externe';toggleBureauType('externe')">
+          <span>🏷 Personne externe</span>
+        </label>
+      </div>
+      <input type="hidden" id="bType" value="arbitre">
+    </div>
+
+    <!-- Arbitre enregistré -->
+    <div id="bArbitreRow" style="margin-bottom:14px">
+      <div class="field">
+        <label>Arbitre</label>
+        <select id="bArbitre"><option value="">— Choisir un arbitre —</option></select>
+      </div>
+    </div>
+
+    <!-- Personne externe -->
+    <div id="bExterneRow" style="display:none;margin-bottom:14px">
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <div class="field"><label>Prénom</label><input type="text" id="bPrenom" placeholder="Prénom"></div>
+        <div class="field"><label>Nom</label><input type="text" id="bNom" placeholder="NOM"></div>
+      </div>
+      <div class="field">
+        <label>Titre / Fonction (optionnel)</label>
+        <input type="text" id="bGradeExt" placeholder="ex: Directeur Technique, Médecin…">
+      </div>
+    </div>
+
+    <!-- Champs communs -->
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <div class="field"><label>Date de début du mandat</label><input type="date" id="bDateDebut"></div>
+      <div class="field"><label>Date de fin du mandat (optionnel)</label><input type="date" id="bDateFin"></div>
+    </div>
+    <div class="field" style="margin-bottom:4px">
+      <label>Téléphone (optionnel)</label>
+      <input type="text" id="bTel" placeholder="ex: 77 000 00 00">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitBureau()">💾 Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeBureauModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="brand">
+  <img src="logo.png" alt="Logo" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #d4a017">
+  <span>SOUS CRA KAFFRINE</span>
+</div>
+  <div class="hright">
+    <div style="font-size:.78rem;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:6px">
+      <span>👤</span><span id="currentUserName" style="color:rgba(255,255,255,.8);font-weight:600"></span>
+    </div>
+    <span id="roleBadge" class="chip"></span>
+    <button class="logoutbtn" onclick="doLogout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- ══ TABBAR ══ -->
+<div class="tabbar">
+  <button class="tab active" data-page="p-dashboard"    onclick="goTo('p-dashboard',this)">🏠 Accueil</button>
+  <button class="tab" data-page="p-bureau"       onclick="goTo('p-bureau',this)">🏅 Bureau</button>
+  <button class="tab" data-page="p-arbitres"     onclick="goTo('p-arbitres',this)">👤 Arbitres <span class="tab-badge" id="tb-arb">0</span></button>
+  <button class="tab" data-page="p-programmes"   onclick="goTo('p-programmes',this)">⚽ Programmes <span class="tab-badge" id="tb-prog">0</span></button>
+  <button class="tab" data-page="p-seminaires"   onclick="goTo('p-seminaires',this)">🎓 Séminaires <span class="tab-badge" id="tb-sem">0</span></button>
+  <button class="tab" data-page="p-performances" onclick="goTo('p-performances',this)">⭐ Performances</button>
+  <button class="tab superadmin-only" data-page="p-comptes" onclick="goTo('p-comptes',this)">🔐 Comptes</button>
+  <button class="tab" data-page="p-stats"        onclick="goTo('p-stats',this)">📊 Statistiques</button>
+</div>
+
+<!-- ══ PAGE 1 — DASHBOARD ══ -->
+<div class="page active" id="p-dashboard">
+  <div class="dash-hero">
+    <div class="dash-inner">
+      <div style="display:flex;align-items:center;gap:24px;margin-bottom:4px;flex-wrap:wrap">
+        <img src="logo.png" alt="Logo CRA Kaffrine"
+             style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #d4a017;flex-shrink:0">
+        <h1 style="margin:0">Commission <em>Centrale</em><br>des Arbitres</h1>
+      </div>
+      <p>Discipline · Neutralité · Excellence</p>
+      <div class="kpi-row">
+        <div class="kpi"><span class="kpi-n" id="kNarb">0</span><div class="kpi-l">Arbitres</div></div>
+        <div class="kpi"><span class="kpi-n" id="kNprog">0</span><div class="kpi-l">Programmes</div></div>
+        <div class="kpi"><span class="kpi-n" id="kNsem">0</span><div class="kpi-l">Séminaires</div></div>
+        <div class="kpi"><span class="kpi-n" id="kTaux">—</span><div class="kpi-l">Présence matchs</div></div>
+        <div class="kpi"><span class="kpi-n" id="kTop">—</span><div class="kpi-l">Top arbitre</div></div>
+      </div>
+      <div class="shortcuts">
+        <button class="sc" onclick="goTo('p-bureau',getTabs()[1])">🏅 Bureau</button>
+        <button class="sc" onclick="goTo('p-arbitres',getTabs()[2])">👤 Arbitres</button>
+        <button class="sc" onclick="goTo('p-programmes',getTabs()[3])">⚽ Programmes</button>
+        <button class="sc" onclick="goTo('p-seminaires',getTabs()[4])">🎓 Séminaires</button>
+        <button class="sc" onclick="goTo('p-performances',getTabs()[5])">⭐ Performances</button>
+        <button class="sc" onclick="goTo('p-stats',getTabs()[6])">📊 Statistiques</button>
+      </div>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="dash-grid">
+      <div class="widget">
+        <div class="whead"><span class="wtitle">🏅 Bureau CRA</span><span class="wlink" onclick="goTo('p-bureau',getTabs()[1])">Voir tout →</span></div>
+        <div id="wBureau"><div class="emptyw">Aucun membre affecté.</div></div>
+      </div>
+      <div class="widget">
+        <div class="whead"><span class="wtitle">🏆 Top Arbitres</span><span class="wlink" onclick="goTo('p-stats',getTabs()[6])">Voir tout →</span></div>
+        <div id="wTopArb"><div class="emptyw">Aucun arbitre.</div></div>
+      </div>
+      <div class="widget">
+        <div class="whead"><span class="wtitle">⚽ Programmes récents</span><span class="wlink" onclick="goTo('p-programmes',getTabs()[3])">Voir tout →</span></div>
+        <div id="wProgs"><div class="emptyw">Aucun programme.</div></div>
+      </div>
+      <div class="widget">
+        <div class="whead"><span class="wtitle">🎓 Séminaires planifiés</span><span class="wlink" onclick="goTo('p-seminaires',getTabs()[4])">Voir tout →</span></div>
+        <div id="wSems"><div class="emptyw">Aucun séminaire.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 2 — BUREAU ══ -->
+<div class="page" id="p-bureau">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">🏅 Bureau <span>CRA & S/CRA</span></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="exportCSVBureau()">📥 Exporter CSV</button>
+        <button class="btn btn-ghost" onclick="exportPDFBureau()">📄 Télécharger PDF</button>
+      </div>
+    </div>
+
+    <!-- Bandeau mandat -->
+    <div class="bureau-mandat-banner">
+      <div class="bmb-icon">🏆</div>
+      <div class="bmb-info">
+        <div class="bmb-title">Commission Régionale des Arbitres de <strong style="color:var(--goldl)">Kaffrine</strong></div>
+        <div class="bmb-sub">CRA · S/CRA · Bureau exécutif — Mandat de 4 ans</div>
+      </div>
+      <div class="bmb-stat">
+        <div class="bmb-n" id="bureauNbPostes">0</div>
+        <div class="bmb-l">Postes pourvus</div>
+      </div>
+    </div>
+
+    <div id="bureauGrid"></div>
+  </div>
+</div>
+
+<!-- ══ PAGE 3 — ARBITRES ══ -->
+<div class="page" id="p-arbitres">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">Liste des <span>Arbitres</span></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="exportPDFArbitres()">📄 Télécharger PDF</button>
+        <button class="btn btn-primary admin-only" onclick="openModal()">+ Ajouter</button>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="srch-wrap">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="srch" type="text" id="srchArb" placeholder="Rechercher un arbitre…" oninput="renderArbitres()">
+      </div>
+      <select id="fGrade" class="field" style="max-width:180px" onchange="renderArbitres()">
+        <option value="">Tous grades</option>
+        <option value="Eleve">Élève Arbitre</option>
+        <option value="District">Arbitre District</option>
+        <option value="Ligue">Arbitre Ligue</option>
+        <option value="Federal">Arbitre Fédéral</option>
+        <option value="Inspecteur">Inspecteur</option>
+      </select>
+    </div>
+    <div id="arbList" class="cards"></div>
+  </div>
+</div>
+
+<!-- ══ PAGE 4 — PROGRAMMES ══ -->
+<div class="page" id="p-programmes">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">⚽ Programmes & <span>Désignations</span></div>
+      <button class="btn btn-ghost" onclick="exportPDFProgrammes()">📄 Télécharger PDF</button>
+    </div>
+    <div class="form-panel admin-only">
+      <h4>➕ Nouveau programme</h4>
+      <form id="progForm" onsubmit="submitProg(event)">
+
+        <!-- Infos générales -->
+        <div class="form-row">
+          <div class="field"><label>Date</label><input type="date" id="pDate" required></div>
+          <div class="field"><label>Heure</label><input type="time" id="pHeure"></div>
+          <div class="field" style="flex:2"><label>Titre / Match</label><input type="text" id="pTitre" placeholder="ex: Match de championnat" required></div>
+          <div class="field"><label>Lieu</label><input type="text" id="pLieu" placeholder="ex: Stade municipal"></div>
+        </div>
+
+        <!-- Désignation des arbitres -->
+        <div style="margin-top:14px;background:var(--bg);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px">
+            🧑‍⚖️ Désignation des arbitres
+          </div>
+          <div class="form-row">
+            <!-- AC -->
+            <div class="field">
+              <label>
+                <span style="display:inline-block;background:#16a34a;color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:4px">AC</span>
+                Arbitre Central <span style="color:var(--red)">*</span>
+              </label>
+              <select id="pAC" onchange="onDesigChange()" required>
+                <option value="">— Choisir —</option>
+              </select>
+            </div>
+            <!-- AA1 -->
+            <div class="field">
+              <label>
+                <span style="display:inline-block;background:#2563eb;color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:4px">AA1</span>
+                Arbitre Assistant 1 <span style="color:var(--red)">*</span>
+              </label>
+              <select id="pAA1" onchange="onDesigChange()" required>
+                <option value="">— Choisir —</option>
+              </select>
+            </div>
+            <!-- AA2 -->
+            <div class="field">
+              <label>
+                <span style="display:inline-block;background:#7c3aed;color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:4px">AA2</span>
+                Arbitre Assistant 2 <span style="color:var(--red)">*</span>
+              </label>
+              <select id="pAA2" onchange="onDesigChange()" required>
+                <option value="">— Choisir —</option>
+              </select>
+            </div>
+            <!-- 4e Arbitre -->
+            <div class="field">
+              <label>
+                <span style="display:inline-block;background:#64748b;color:#fff;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;margin-right:4px">4e</span>
+                4e Arbitre <span style="color:var(--muted);font-size:.75rem">(facultatif)</span>
+              </label>
+              <select id="pArb4" onchange="onDesigChange()">
+                <option value="">— Non désigné —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inspecteur du match -->
+        <div style="margin-top:14px;background:var(--bg);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px">
+            🔍 Inspecteur du match <span style="color:var(--muted);font-size:.75rem;font-weight:400;text-transform:none">(facultatif)</span>
+          </div>
+          <!-- Toggle type -->
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <label style="flex:1;display:flex;align-items:center;gap:7px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:.82rem" id="inspArbitreLabel">
+              <input type="radio" name="inspTypeRadio" value="arbitre" id="inspTypeArbitre" onchange="toggleInspType('arbitre')" checked>
+              <span>👤 Inspecteur enregistré</span>
+            </label>
+            <label style="flex:1;display:flex;align-items:center;gap:7px;padding:8px 12px;border:2px solid var(--border);border-radius:8px;cursor:pointer;font-size:.82rem" id="inspExterneLabel">
+              <input type="radio" name="inspTypeRadio" value="externe" id="inspTypeExterne" onchange="toggleInspType('externe')">
+              <span>🏷 Saisie libre</span>
+            </label>
+          </div>
+          <!-- Arbitre enregistré -->
+          <div id="inspArbitreRow">
+            <div class="field">
+              <select id="pInspArbitre">
+                <option value="">— Choisir un Inspecteur —</option>
+              </select>
+            </div>
+          </div>
+          <!-- Saisie libre -->
+          <div id="inspExterneRow" style="display:none">
+            <div style="display:flex;gap:10px">
+              <div class="field"><label>Prénom</label><input type="text" id="pInspPrenom" placeholder="Prénom"></div>
+              <div class="field"><label>Nom</label><input type="text" id="pInspNom" placeholder="NOM"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions" style="margin-top:12px">
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          <button type="button" class="btn btn-ghost" onclick="resetProg()">Annuler</button>
+        </div>
+      </form>
+    </div>
+    <div id="progList"></div>
+  </div>
+</div>
+
+<!-- ══ PAGE 5 — SÉMINAIRES ══ -->
+<div class="page" id="p-seminaires">
+  <div class="sect">
+    <div class="sect-head"><div class="sect-title">🎓 Séminaires & <span>Formations</span></div></div>
+    <div class="form-panel admin-only">
+      <h4>➕ Nouveau séminaire / formation</h4>
+      <form id="semForm" onsubmit="submitSem(event)">
+        <div class="form-row">
+          <div class="field"><label>Date</label><input type="date" id="sDate" required></div>
+          <div class="field" style="flex:2"><label>Titre</label><input type="text" id="sTitre" placeholder="ex: Formation arbitrage" required></div>
+          <div class="field"><label>Lieu</label><input type="text" id="sLieu" placeholder="ex: Salle de réunion"></div>
+        </div>
+        <div class="form-row" style="margin-top:10px">
+          <div class="field" style="flex:2"><label>Thème / Module</label><input type="text" id="sTheme" placeholder="ex: loi 11 : — Hors-jeu"></div>
+          <div class="field"><label>Formateur / Intervenant</label><input type="text" id="sFormateur" placeholder="ex: M. Babacar CISSE"></div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+          <button type="button" class="btn btn-ghost" onclick="resetSem()">Annuler</button>
+        </div>
+      </form>
+    </div>
+    <div id="semList"></div>
+    <div class="confirm-bar admin-only" style="background:#eff6ff;border-color:#93c5fd">
+      <p style="color:#1d4ed8">✅ Cochez les présences puis confirmez.</p>
+      <button class="btn" style="background:#2563eb;color:#fff" onclick="confirmPresenceSem()">Confirmer les présences</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+      <button class="btn btn-ghost" onclick="exportCSVSem()">📥 Exporter CSV</button>
+      <button class="btn btn-ghost" onclick="exportPDFSem()">📄 Télécharger PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 6 — PERFORMANCES ══ -->
+<div class="page" id="p-performances">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">⭐ Performances <span>Terrain</span></div>
+      <button class="btn btn-primary admin-only" onclick="openPerfModal()">+ Ajouter</button>
+    </div>
+
+    <div style="background:var(--goldbg);border:1px solid #fcd34d;border-radius:10px;padding:13px 18px;margin-bottom:18px;font-size:.84rem;color:var(--gold);display:flex;gap:10px;align-items:center">
+      <span style="font-size:1.2rem">💡</span>
+      <span>Les performances sont liées aux <strong>programmes</strong> (matchs) et <strong>séminaires</strong>. Seuls les arbitres <strong>présents</strong> à l'événement peuvent être évalués.</span>
+    </div>
+
+    <div class="toolbar">
+      <select id="fPerfArb" class="field" style="max-width:240px" onchange="renderPerfs()">
+        <option value="">Tous les arbitres</option>
+      </select>
+      <select id="fPerfEv" class="field" style="max-width:300px" onchange="renderPerfs()">
+        <option value="">Tous les événements</option>
+      </select>
+    </div>
+    <div id="perfList"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
+      <button class="btn btn-ghost" onclick="exportCSVPerf()">📥 Exporter CSV</button>
+      <button class="btn btn-ghost" onclick="exportPDFPerf()">📄 Télécharger PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE 7 — STATISTIQUES ══ -->
+<div class="page" id="p-stats">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">📊 <span>Statistiques</span></div>
+      <button class="btn btn-ghost" onclick="exportPDFStats()">📄 Télécharger PDF</button>
+    </div>
+    <div class="stats-summary" id="statsSummary"></div>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+</div>
+
+
+<!-- ══ MODAL COMPTE ADMIN ══ -->
+<div class="modal-bg" id="compteModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title" id="compteModalTitre">Créer un compte admin</div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Nom complet</label>
+      <input type="text" id="cNom" placeholder="Prénom Nom">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Adresse email</label>
+      <input type="email" id="cEmail" placeholder="admin@kaffrine.sn">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Mot de passe</label>
+      <div style="position:relative">
+        <input type="password" id="cPassword" placeholder="Minimum 6 caractères" style="padding-right:40px">
+        <button onclick="var i=document.getElementById('cPassword');i.type=i.type==='password'?'text':'password'"
+                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px"
+                tabindex="-1" type="button">👁</button>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.88rem;margin-bottom:4px">
+      <input type="checkbox" id="cActif" checked style="width:16px;height:16px;accent-color:var(--g900)">
+      Compte actif
+    </label>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="submitCompte()">💾 Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeCompteModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE COMPTES ══ -->
+<div class="page superadmin-only" id="p-comptes">
+  <div class="sect">
+    <div class="sect-head">
+      <div class="sect-title">🔐 Gestion des <span>Comptes</span></div>
+      <button class="btn btn-primary" onclick="openCompteModal()">+ Créer un compte</button>
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Comptes système (fixes)</div>
+      <div style="background:linear-gradient(135deg,#f5f3ff,#ede9fe);border:1px solid #c4b5fd;border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:8px">
+        <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-family:Syne,sans-serif;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">S</div>
+        <div><div style="font-weight:700">Super Administrateur</div><div style="font-size:.8rem;color:var(--muted)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d8abada8bdaab9bcb5b1b698b3b9bebeaab1b6bdf6abb6">[email&#160;protected]</a></div></div>
+        <span class="badge" style="margin-left:auto;background:#ede9fe;color:#5b21b6">Super Admin</span>
+      </div>
+      <div style="background:var(--g100);border:1px solid #86efac;border-radius:var(--radius);padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <div style="width:42px;height:42px;border-radius:50%;background:var(--g900);color:#fff;font-family:Syne,sans-serif;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">O</div>
+        <div><div style="font-weight:700">Observateur</div><div style="font-size:.8rem;color:var(--muted)"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="016e63726473776075647473416a60676773686f642f726f">[email&#160;protected]</a></div></div>
+        <span class="badge badge-y" style="margin-left:auto">Observateur</span>
+      </div>
+    </div>
+    <div style="font-size:.73rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">Administrateurs</div>
+    <div class="widget"><div id="comptesList"><div class="empty">Aucun compte créé.</div></div></div>
+    <div style="background:var(--goldbg);border:1px solid #fcd34d;border-radius:var(--radius);padding:14px 18px;font-size:.84rem;color:var(--gold);margin-top:20px">
+      🔐 Chaque administrateur se connecte avec son propre email et mot de passe. Un compte désactivé ne peut plus se connecter.
+    </div>
+  </div>
+</div>
+
+<!-- ══ JAVASCRIPT ══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/bureau.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/render.js"></script>
+<script src="js/api.js"></script>
+</body>
+</html>
