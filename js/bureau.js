@@ -1,220 +1,359 @@
 /* ══════════════════════════════════════
-   bureau.js — Membres du Bureau (version API)
+   api.js — Couche de communication avec le serveur PHP/MySQL
+   Remplace le localStorage de l'ancienne version
 ══════════════════════════════════════ */
 
-const POSTES_BUREAU = [
-  { id:"pres_cra",   label:"Président",           org:"CRA"    },
-  { id:"vp_cra",     label:"Vice-Président",       org:"CRA"    },
-  { id:"sg_cra",     label:"Secrétaire Général",   org:"CRA"    },
-  { id:"tres_cra",   label:"Trésorier",            org:"CRA"    },
-  { id:"pres_scra",  label:"Président",            org:"S/CRA"  },
-  { id:"vp_scra",    label:"Vice-Président",       org:"S/CRA"  },
-  { id:"sg_scra",    label:"Secrétaire Général",   org:"S/CRA"  },
-  { id:"tres_scra",  label:"Trésorier",            org:"S/CRA"  },
-  { id:"mb1",        label:"Membre du Bureau 1",   org:"Bureau" },
-  { id:"mb2",        label:"Membre du Bureau 2",   org:"Bureau" },
-  { id:"mb3",        label:"Membre du Bureau 3",   org:"Bureau" },
-];
+// Détection automatique du port et de l'hôte (WAMP port 80, 8080, etc.)
+const API_BASE = window.location.origin + '/kaffrine/api';
+let _sessionToken = localStorage.getItem('kf_token') || null;
 
-/* ════════════════════════════════
-   ÉTAT LOCAL
-════════════════════════════════ */
-let _bureauPosteId = null;
+// ─── Requête générique ────────────────────────
+async function apiCall(endpoint, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (_sessionToken) opts.headers['X-Session-Token'] = _sessionToken;
+  if (body) opts.body = JSON.stringify(body);
 
-/* ════════════════════════════════
-   RENDER — Grille des postes
-════════════════════════════════ */
-function renderBureau() {
-  const bureau = getBureau(); // depuis api.js (_bureau)
-  const grid   = document.getElementById("bureauGrid");
-  const nb     = document.getElementById("bureauNbPostes");
-  const wBureau = document.getElementById("wBureau");
+  try {
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const tokenParam = _sessionToken ? `${sep}token=${encodeURIComponent(_sessionToken)}` : '';
+    const res  = await fetch(`${API_BASE}/${endpoint}${tokenParam}`, opts);
+    const data = await res.json();
+    if (!res.ok) {
+      toast('⚠ ' + (data.error || 'Erreur serveur'), 'err');
+      throw new Error(data.error || 'Erreur');
+    }
+    return data;
+  } catch (e) {
+    if (e.message !== 'Failed to fetch') throw e;
+    toast('⚠ Impossible de contacter le serveur', 'err');
+    throw e;
+  }
+}
 
-  if (!grid) return;
+/* ══════════════════════════════════════
+   AUTH
+══════════════════════════════════════ */
+async function doLogin() {
+  const emailInput = document.getElementById('emailInput').value.trim().toLowerCase();
+  const pw         = document.getElementById('pwInput').value;
+  const errEl      = document.getElementById('loErr');
+  errEl.style.display = 'none';
+  if (!emailInput || !pw) {
+    errEl.textContent = '⚠ Identifiant et mot de passe obligatoires';
+    errEl.style.display = 'block'; return;
+  }
+  try {
+    // Utiliser GET pour le login (évite les problèmes CORS/preflight sur WAMP)
+    const url = `${API_BASE}/auth.php?action=login&email=${encodeURIComponent(emailInput)}&password=${encodeURIComponent(pw)}`;
+    const res  = await fetch(url);
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      // Le serveur a répondu mais pas en JSON (page d'erreur Apache/PHP)
+      // → cause fréquente sous WAMP : mod_headers ou mod_rewrite désactivé,
+      //   .htaccess bloquant, ou erreur PHP fatale (voir config.php)
+      errEl.textContent = `⚠ Le serveur a répondu une erreur (HTTP ${res.status}) au lieu de JSON. Vérifie que mod_headers et mod_rewrite sont activés dans WAMP, et consulte le journal Apache.`;
+      errEl.style.display = 'block'; return;
+    }
+    if (!res.ok) {
+      errEl.textContent = '⚠ ' + (data.error || `Erreur serveur (HTTP ${res.status})`);
+      errEl.style.display = 'block'; return;
+    }
+    if (!data.token) {
+      errEl.textContent = '⚠ Identifiant ou mot de passe incorrect';
+      errEl.style.display = 'block'; return;
+    }
+    _sessionToken = data.token;
+    localStorage.setItem('kf_token', data.token);
+    localStorage.setItem('kf_role',  data.role);
+    localStorage.setItem('kf_nom',   data.nom);
+    localStorage.setItem('kf_email', data.email);
+    document.getElementById('lo').style.display = 'none';
+    applyRole();
+    await renderAll();
+  } catch (e) {
+    // Ici : la requête n'a même pas atteint le serveur
+    // (Apache/MySQL arrêté, mauvais chemin/port, CORS bloqué...)
+    errEl.textContent = '⚠ Impossible de contacter le serveur (vérifie qu\'Apache et MySQL sont bien démarrés dans WAMP, et que l\'URL du projet est correcte)';
+    errEl.style.display = 'block';
+  }
+}
 
-  const pourvus = POSTES_BUREAU.filter(p => bureau[p.id]).length;
-  if (nb) nb.textContent = pourvus;
+async function doLogout() {
+  try { await apiCall('auth.php?action=logout', 'POST'); } catch(_) {}
+  _sessionToken = null;
+  localStorage.removeItem('kf_token');
+  localStorage.removeItem('kf_role');
+  localStorage.removeItem('kf_nom');
+  localStorage.removeItem('kf_email');
+  location.reload();
+}
 
-  const orgs = [...new Set(POSTES_BUREAU.map(p => p.org))];
+function getRole()      { return localStorage.getItem('kf_role'); }
+function isAdmin()      { const r=getRole(); return r==='admin'||r==='superadmin'; }
+function isSuperAdmin() { return getRole()==='superadmin'; }
+function getCurrentUser() {
+  return { role:getRole(), nom:localStorage.getItem('kf_nom'), email:localStorage.getItem('kf_email') };
+}
 
-  grid.innerHTML = orgs.map(org => {
-    const postes = POSTES_BUREAU.filter(p => p.org === org);
-    return `
-      <div class="bureau-section">
-        <div class="bureau-section-title">${org}</div>
-        <div class="bureau-cards">
-          ${postes.map(poste => {
-            const m    = bureau[poste.id];
-            const nom  = membreNom(m);
-            const photo= membrePhoto(m);
-            const grade= membreGrade(m);
-            const vide = !m;
-            return `
-              <div class="bureau-card ${vide ? "bureau-card-vide" : ""}">
-                <div class="bureau-card-inner">
-                  <img class="bureau-photo" src="${photo}" alt="${nom}">
-                  <div class="bureau-poste">${poste.label}</div>
-                  <div class="bureau-nom">${nom}</div>
-                  ${grade ? `<div class="bureau-grade">${grade}</div>` : ""}
-                  ${m?.dateDebut ? `<div class="bureau-mandat">📅 Depuis ${m.dateDebut}</div>` : ""}
-                  ${m?.tel ? `<div class="bureau-tel">📞 ${m.tel}</div>` : ""}
-                </div>
-                ${isAdmin() ? `
-                  <div class="bureau-card-actions">
-                    <button class="btn btn-xs btn-gold" onclick="openBureauModal('${poste.id}')">
-                      ${vide ? "➕ Affecter" : "✏ Modifier"}
-                    </button>
-                    ${!vide ? `<button class="btn btn-xs btn-danger" onclick="vacantBureau('${poste.id}')">🗑</button>` : ""}
-                  </div>
-                ` : ""}
-              </div>`;
-          }).join("")}
-        </div>
-      </div>`;
-  }).join("");
+function applyRole() {
+  const admin=isAdmin(), su=isSuperAdmin(), user=getCurrentUser();
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display=admin?'':'none');
+  document.querySelectorAll('.superadmin-only').forEach(el => el.style.display=su?'':'none');
+  const badge=document.getElementById('roleBadge');
+  if (badge) { badge.textContent=su?'Super Admin':admin?'Admin':'Observateur'; badge.className='chip '+(su?'chip-su':admin?'chip-a':'chip-v'); }
+  const userEl=document.getElementById('currentUserName');
+  if (userEl&&user) userEl.textContent=user.nom||user.email;
+}
 
-  if (wBureau) {
-    const remplis = POSTES_BUREAU.filter(p => bureau[p.id]).slice(0, 4);
-    if (!remplis.length) {
-      wBureau.innerHTML = '<div class="emptyw">Aucun membre affecté.</div>';
+/* ══════════════════════════════════════
+   ARBITRES
+══════════════════════════════════════ */
+let _arbs = [];
+async function loadArbs()  { _arbs = await apiCall('arbitres.php'); return _arbs; }
+function getArbs()         { return _arbs; }
+
+async function submitArb() {
+  const prenom = document.getElementById('mPrenom').value.trim();
+  const nom    = document.getElementById('mNom').value.trim().toUpperCase();
+  const grade  = document.getElementById('mGrade').value;
+  const dateNaissance = document.getElementById('mDateNaissance').value;
+  const lieuNaissance = document.getElementById('mLieuNaissance').value.trim();
+  const file   = document.getElementById('mPhoto').files[0];
+  if (!prenom||!nom||!grade) { toast('⚠ Remplissez tous les champs','err'); return; }
+  const doSave = async (photo) => {
+    const payload = { prenom, nom, grade, dateNaissance, lieuNaissance, photo: photo||'' };
+    if (_editIdx !== null) {
+      payload.id = _arbs[_editIdx].id;
+      await apiCall('arbitres.php', 'PUT', payload);
+      toast('✅ Arbitre modifié !');
     } else {
-      wBureau.innerHTML = remplis.map(p => {
-        const m = bureau[p.id];
-        return `<div class="wrow">
-          <img class="wavatar" src="${membrePhoto(m)}" alt="${membreNom(m)}">
-          <div style="flex:1">
-            <div class="wname">${membreNom(m)}</div>
-            <div style="font-size:.72rem;color:var(--muted)">${p.org} — ${p.label}</div>
-          </div>
-        </div>`;
-      }).join("");
+      await apiCall('arbitres.php', 'POST', payload);
+      toast('✅ Arbitre ajouté !');
     }
-  }
+    closeModal(); await renderAll();
+  };
+  file ? compressImage(file, doSave) : doSave(null);
 }
 
-/* ════════════════════════════════
-   MODAL — AFFECTER / MODIFIER
-════════════════════════════════ */
-function openBureauModal(posteId) {
-  _bureauPosteId = posteId;
-  const poste  = POSTES_BUREAU.find(p => p.id === posteId);
-  const bureau = getBureau();
-  const m      = bureau[posteId] || {};
-  const arbs   = getArbs();
-
-  document.getElementById("bureauModalTitre").textContent = `${poste.org} — ${poste.label}`;
-
-  const type = m.type || "arbitre";
-  document.getElementById("bType").value = type;
-  document.getElementById("bTypeArbitre").checked = type === "arbitre";
-  document.getElementById("bTypeExterne").checked = type === "externe";
-  toggleBureauType(type);
-
-  const sel = document.getElementById("bArbitre");
-  sel.innerHTML = `<option value="">— Choisir un arbitre —</option>` +
-    arbs.map(a => {
-      const cle = clePresence(a);
-      return `<option value="${cle}" ${m.arbitre_id === a.id ? "selected" : ""}>${nomAffiche(a)} — ${gradeLabel(a.grade)}</option>`;
-    }).join("");
-
-  document.getElementById("bPrenom").value    = m.prenom || "";
-  document.getElementById("bNom").value       = (m.nom   || "").toUpperCase();
-  document.getElementById("bGradeExt").value  = m.grade  || "";
-  document.getElementById("bDateDebut").value = m.dateDebut || "";
-  document.getElementById("bDateFin").value   = m.dateFin   || "";
-  document.getElementById("bTel").value       = m.tel       || "";
-
-  document.getElementById("bureauModal").classList.add("open");
+async function delArb(i) {
+  if (!confirm('Supprimer cet arbitre définitivement ?')) return;
+  await apiCall('arbitres.php?id='+_arbs[i].id, 'DELETE');
+  toast('🗑 Arbitre supprimé'); await renderAll();
 }
 
-function closeBureauModal() {
-  document.getElementById("bureauModal").classList.remove("open");
-  _bureauPosteId = null;
-}
+/* ══════════════════════════════════════
+   PROGRAMMES
+══════════════════════════════════════ */
+let _progs = [];
+async function loadProgs() { _progs = await apiCall('programmes.php'); return _progs; }
+function getProgs()        { return _progs; }
 
-function toggleBureauType(type) {
-  document.getElementById("bArbitreRow").style.display = type === "arbitre" ? "" : "none";
-  document.getElementById("bExterneRow").style.display = type === "externe" ? "" : "none";
-}
-
-async function submitBureau() {
-  const type      = document.getElementById("bType").value;
-  const dateDebut = document.getElementById("bDateDebut").value;
-  const dateFin   = document.getElementById("bDateFin").value;
-  const tel       = document.getElementById("bTel").value.trim();
-
-  let membre = { type, dateDebut, dateFin, tel };
-
-  if (type === "arbitre") {
-    const arbitre = document.getElementById("bArbitre").value;
-    if (!arbitre) { toast("⚠ Sélectionnez un arbitre", "err"); return; }
-    const arb = getArbs().find(a => clePresence(a) === arbitre);
-    if (arb) {
-      membre.arbitre_id = arb.id; // Correction : envoyer l'ID numérique attendu par bureau.php
-      membre.prenom = arb.prenom; membre.nom = arb.nom; membre.grade = arb.grade;
-    }
+async function submitProg(e) {
+  e.preventDefault();
+  const date  = document.getElementById('pDate').value;
+  const heure = document.getElementById('pHeure').value;
+  const titre = document.getElementById('pTitre').value;
+  const lieu  = document.getElementById('pLieu').value;
+  const inspType = document.querySelector('input[name="inspTypeRadio"]:checked')?.value||'arbitre';
+  let inspecteur = null;
+  if (inspType==='arbitre') {
+    const cle=document.getElementById('pInspArbitre').value;
+    if (cle) { const arb=_arbs.find(a=>nomComplet(a)===cle); inspecteur={type:'arbitre',cle,nom:arb?nomAffiche(arb):cle}; }
   } else {
-    const prenom = document.getElementById("bPrenom").value.trim();
-    const nom    = document.getElementById("bNom").value.trim().toUpperCase();
-    if (!prenom || !nom) { toast("⚠ Prénom et Nom obligatoires", "err"); return; }
-    membre.prenom = prenom;
-    membre.nom    = nom;
-    membre.grade  = document.getElementById("bGradeExt").value.trim();
+    const prenom=document.getElementById('pInspPrenom').value.trim();
+    const nom=document.getElementById('pInspNom').value.trim().toUpperCase();
+    if (prenom||nom) inspecteur={type:'externe',nom:`${prenom} ${nom}`.trim()};
   }
-
-  // Sauvegarder via API (api.js)
-  const bureau = getBureau();
-  bureau[_bureauPosteId] = membre;
-  await saveBureau(bureau);
-  closeBureauModal();
-  toast(`✅ ${membre.prenom||''} ${membre.nom||''} affecté au poste !`);
+  const designation={ac:document.getElementById('pAC').value,aa1:document.getElementById('pAA1').value,aa2:document.getElementById('pAA2').value,arb4:document.getElementById('pArb4').value};
+  const form=document.getElementById('progForm');
+  const editIdx=form.dataset.edit!==undefined?Number(form.dataset.edit):null;
+  const payload={titre,date,heure,lieu,designation,inspecteur};
+  if (editIdx!==null) { payload.id=_progs[editIdx].id; await apiCall('programmes.php','PUT',payload); delete form.dataset.edit; toast('📅 Programme modifié !'); }
+  else { await apiCall('programmes.php','POST',payload); toast('📅 Programme ajouté !'); }
+  resetProg(); await renderAll();
 }
 
-/* ════════════════════════════════
-   HELPERS — nom / photo / grade
-════════════════════════════════ */
-function membreNom(m) {
-  if (!m) return "— Poste vacant —";
-  if (m.type === "arbitre" && m.arbitre_id) {
-    const arb = getArbs().find(a => a.id === m.arbitre_id);
-    if (arb) return nomAffiche(arb);
+async function delProg(i) {
+  if (!confirm('Supprimer ce programme ?')) return;
+  await apiCall('programmes.php?id='+_progs[i].id,'DELETE');
+  toast('🗑 Programme supprimé'); await renderAll();
+}
+
+async function confirmPresence() {
+  const progs=_progs;
+  for (const [i,p] of progs.entries()) {
+    if (!tempPres[i]) continue;
+    await apiCall('programmes.php?id='+p.id,'PATCH', tempPres[i].map(r=>({arbitre_id:r.id,present:r.present?1:0})));
   }
-  return `${m.prenom || ""} ${m.nom || ""}`.trim() || "—";
+  toast('✅ Présences matchs enregistrées !'); await renderAll();
 }
 
-function membrePhoto(m) {
-  if (!m) return `https://ui-avatars.com/api/?name=?&background=2d2d2d&color=666&size=200`;
-  if (m.type === "arbitre" && m.arbitre_id) {
-    const arb = getArbs().find(a => a.id === m.arbitre_id);
-    if (arb) return avatarSrc(arb);
+/* ══════════════════════════════════════
+   SÉMINAIRES
+══════════════════════════════════════ */
+let _sems = [];
+async function loadSems() { _sems = await apiCall('seminaires.php'); return _sems; }
+function getSems()        { return _sems; }
+
+async function submitSem(e) {
+  e.preventDefault();
+  const form=document.getElementById('semForm');
+  const obj={titre:document.getElementById('sTitre').value,date:document.getElementById('sDate').value,lieu:document.getElementById('sLieu').value,theme:document.getElementById('sTheme').value,formateur:document.getElementById('sFormateur').value};
+  const idx=form.dataset.edit;
+  if (idx!==undefined) { obj.id=_sems[idx].id; await apiCall('seminaires.php','PUT',obj); delete form.dataset.edit; toast('🎓 Séminaire modifié !'); }
+  else { await apiCall('seminaires.php','POST',obj); toast('🎓 Séminaire ajouté !'); }
+  resetSem(); await renderAll();
+}
+
+async function delSem(i) {
+  if (!confirm('Supprimer ce séminaire ?')) return;
+  await apiCall('seminaires.php?id='+_sems[i].id,'DELETE');
+  toast('🗑 Séminaire supprimé'); await renderAll();
+}
+
+async function confirmPresenceSem() {
+  for (const [i,s] of _sems.entries()) {
+    if (!tempPresSem[i]) continue;
+    await apiCall('seminaires.php?id='+s.id,'PATCH', tempPresSem[i].map(r=>({arbitre_id:r.id,present:r.present?1:0})));
   }
-  const initiales = `${(m.prenom||"")[0]||""}${(m.nom||"")[0]||""}`;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initiales||"?")}&background=0a5c1e&color=fff&bold=true&size=200`;
+  toast('✅ Présences séminaires enregistrées !'); await renderAll();
 }
 
-function membreGrade(m) {
-  if (!m) return "";
-  if (m.type === "arbitre" && m.arbitre_id) {
-    const arb = getArbs().find(a => a.id === m.arbitre_id);
-    if (arb) return gradeLabel(arb.grade);
+/* ══════════════════════════════════════
+   PERFORMANCES
+══════════════════════════════════════ */
+let _perfs = [];
+async function loadPerfs() {
+  const rows = await apiCall('performances.php');
+  _perfs = rows.map(r => ({
+    ...r,
+    evenementId: r.evenementId ?? r.evenement_id ?? '',
+    match: r.match ?? r.match_titre ?? '',
+    date: r.date ?? r.date_perf ?? ''
+  }));
+  return _perfs;
+}
+function getPerfs()        { return _perfs; }
+
+async function submitPerf() {
+  const arbitre_id=parseInt(document.getElementById('pfArbitre').value);
+  const evenementId=document.getElementById('pfEvenement').value;
+  const note=document.getElementById('pfNote').value;
+  const matchs=document.getElementById('pfMatchs').value;
+  const cartons=document.getElementById('pfCartons').value;
+  const commentaire=document.getElementById('pfCommentaire').value.trim();
+  if (!arbitre_id||!evenementId) { toast('⚠ Événement et arbitre obligatoires','err'); return; }
+  if (note!==''&&(Number(note)<0||Number(note)>20)) { toast('⚠ Note entre 0 et 20','err'); return; }
+  const [type,id]=evenementId.split('-');
+  const ev=type==='prog'?_progs.find(x=>String(x.id)===id):_sems.find(x=>String(x.id)===id);
+  const payload={arbitre_id,evenementId,match:ev?.titre||'',date:ev?.date||'',note:note!==''?Number(note):'',matchs:Number(matchs)||0,cartons:Number(cartons)||0,commentaire};
+  if (_editPerfIdx!==null) { payload.id=_perfs[_editPerfIdx].id; await apiCall('performances.php','PUT',payload); toast('✅ Performance modifiée !'); }
+  else { await apiCall('performances.php','POST',payload); toast('✅ Performance ajoutée !'); }
+  closePerfModal(); await renderAll();
+}
+
+async function delPerf(i) {
+  if (!confirm('Supprimer cette performance ?')) return;
+  await apiCall('performances.php?id='+_perfs[i].id,'DELETE');
+  toast('🗑 Performance supprimée'); await renderAll();
+}
+
+/* ══════════════════════════════════════
+   BUREAU
+══════════════════════════════════════ */
+let _bureau = {};
+async function loadBureau() {
+  const rows = await apiCall('bureau.php'); // tableau renvoyé par bureau.php
+  _bureau = {};
+  for (const r of rows) _bureau[r.poste_id] = r;
+  return _bureau;
+}
+function getBureau()        { return _bureau; }
+async function saveBureau(membre) {
+  await apiCall('bureau.php','POST',membre);
+  await loadBureau();
+  renderBureau();
+}
+async function vacantBureau(posteId) {
+  if (!confirm('Retirer ce membre du poste ?')) return;
+  await apiCall('bureau.php?poste_id='+posteId,'DELETE');
+  toast('🗑 Poste vacant'); await loadBureau(); renderBureau();
+}
+
+/* ══════════════════════════════════════
+   COMPTES
+══════════════════════════════════════ */
+let _comptes = [];
+async function loadComptes() { _comptes = await apiCall('auth.php?action=comptes'); return _comptes; }
+function getComptes()        { return _comptes; }
+
+async function submitCompte() {
+  const nom=document.getElementById('cNom').value.trim();
+  const email=document.getElementById('cEmail').value.trim().toLowerCase();
+  const password=document.getElementById('cPassword').value;
+  const actif=document.getElementById('cActif').checked;
+  if (!nom||!email||!password) { toast('⚠ Tous les champs sont obligatoires','err'); return; }
+  if (!email.includes('@')) { toast('⚠ Email invalide','err'); return; }
+  if (password.length<6) { toast('⚠ Mot de passe trop court (6 caractères min)','err'); return; }
+  if (_editCompteIdx!==null) {
+    await apiCall('auth.php?action=comptes','PUT',{id:_comptes[_editCompteIdx].id,nom,email,password,actif});
+    toast('✅ Compte modifié !');
+  } else {
+    await apiCall('auth.php?action=comptes','POST',{nom,email,password,actif});
+    toast('✅ Compte admin créé !');
   }
-  return m.grade || "";
+  closeCompteModal(); await loadComptes(); renderComptes();
 }
 
-/* ════════════════════════════════
-   EXPORT CSV
-════════════════════════════════ */
-function exportCSVBureau() {
-  const bureau = getBureau();
-  let csv = "\uFEFFOrganisation,Poste,Prénom,Nom,Grade,Depuis,Jusqu'au,Téléphone\n";
-  POSTES_BUREAU.forEach(p => {
-    const m = bureau[p.id];
-    csv += `"${p.org}","${p.label}","${m?.prenom||""}","${m?.nom||""}","${membreGrade(m)}","${m?.dateDebut||""}","${m?.dateFin||""}","${m?.tel||""}"\n`;
-  });
-  _dl(csv, `bureau_cra_${_today()}.csv`);
+async function toggleActifCompte(idx) {
+  const c=_comptes[idx];
+  const newActif = c.actif ? 0 : 1;
+  await apiCall('auth.php?action=comptes','PUT',{...c, actif: newActif});
+  await loadComptes(); renderComptes();
+  // Correction : utiliser newActif (état cible) et non _comptes[idx].actif après rechargement
+  toast(newActif ? '✅ Compte activé' : '⚠ Compte désactivé');
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("bureauModal")
-    ?.addEventListener("click", e => { if (e.target.id === "bureauModal") closeBureauModal(); });
+async function deleteCompte(idx) {
+  if (!confirm('Supprimer définitivement ce compte ?')) return;
+  await apiCall('auth.php?action=comptes&id='+_comptes[idx].id,'DELETE');
+  await loadComptes(); renderComptes(); toast('🗑 Compte supprimé');
+}
+
+/* ══════════════════════════════════════
+   HELPERS — clés & noms
+══════════════════════════════════════ */
+function nomComplet(a)  { return a.nomComplet || `${a.prenom} ${a.nom}`; }
+function clePresence(a) { return a.nomComplet || `${a.prenom} ${a.nom}`; }
+function nomAffiche(a)  { return a.prenom ? `${a.prenom} ${a.nom}` : a.nomComplet||a.nom||''; }
+
+/* ══════════════════════════════════════
+   RENDER ALL (async)
+══════════════════════════════════════ */
+async function renderAll() {
+  await Promise.all([loadArbs(), loadProgs(), loadSems(), loadPerfs(), loadBureau()]);
+  renderDash(); renderBureau(); renderArbitres(); renderProgs(); renderSems(); renderPerfs(); renderStats();
+  if (isSuperAdmin()) { await loadComptes(); renderComptes(); }
+}
+
+/* ══════════════════════════════════════
+   INIT AU CHARGEMENT
+══════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  if (_sessionToken) {
+    try {
+      await apiCall('auth.php?action=me');
+      document.getElementById('lo').style.display = 'none';
+      applyRole();
+      await renderAll();
+    } catch(_) {
+      localStorage.removeItem('kf_token');
+      _sessionToken = null;
+    }
+  }
 });

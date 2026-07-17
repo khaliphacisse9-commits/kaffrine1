@@ -31,35 +31,20 @@ if ($action === 'login') {
     $role = null;
     $nom  = null;
 
-    // ── Comptes fixes (pas de DB nécessaire) ──
-    // Accepter "superadmin" ou "superadmin@kaffrine.sn"
-    $emailNorm = strpos($email, '@') === false ? $email : explode('@', $email)[0];
-
-    if (($emailNorm === 'superadmin' || $email === SUPER_ADMIN_EMAIL) && $pass === SUPER_ADMIN_PASS) {
-        $role  = 'superadmin';
-        $nom   = 'Super Administrateur';
-        $email = SUPER_ADMIN_EMAIL;
-    }
-    elseif (($emailNorm === 'observateur' || $email === VIEWER_EMAIL) && $pass === VIEWER_PASS) {
-        $role  = 'viewer';
-        $nom   = 'Observateur';
-        $email = VIEWER_EMAIL;
-    }
-    // ── Comptes admin en base de données ──
-    else {
-        try {
-            $db   = getDB();
-            $stmt = $db->prepare("SELECT * FROM comptes WHERE (email = ? OR SUBSTRING_INDEX(email,'@',1) = ?) AND actif = 1 LIMIT 1");
-            $stmt->execute([$email, $email]);
-            $compte = $stmt->fetch();
-            if ($compte && $compte['password'] === $pass) {
-                $role  = $compte['role'];
-                $nom   = $compte['nom'];
-                $email = $compte['email'];
-            }
-        } catch (Exception $e) {
-            // DB inaccessible — les comptes fixes sont déjà traités au-dessus
+    // ── Comptes en base de données (superadmin, observateur, admins) ──
+    try {
+        $db   = getDB();
+        $stmt = $db->prepare("SELECT * FROM comptes WHERE (email = ? OR SUBSTRING_INDEX(email,'@',1) = ?) AND actif = 1 LIMIT 1");
+        $stmt->execute([$email, $email]);
+        $compte = $stmt->fetch();
+        if ($compte && password_verify($pass, $compte['password'])) {
+            $role  = $compte['role'];
+            $nom   = $compte['nom'];
+            $email = $compte['email'];
         }
+    } catch (Exception $e) {
+        // DB inaccessible
+        jsonResponse(['error' => 'Connexion base de données impossible'], 500);
     }
 
     if (!$role) {
@@ -123,16 +108,23 @@ if ($action === 'comptes') {
         $pass = $d['password'] ?? '';
         $actif = $d['actif'] ?? 1;
         if (!$nom || !$mail || !$pass) jsonResponse(['error' => 'Champs obligatoires manquants'], 400);
+        $hash = password_hash($pass, PASSWORD_DEFAULT);
         $db->prepare("INSERT INTO comptes (nom, email, password, role, actif) VALUES (?, ?, ?, 'admin', ?)")
-           ->execute([$nom, $mail, $pass, (int)$actif]);
+           ->execute([$nom, $mail, $hash, (int)$actif]);
         jsonResponse(['id' => $db->lastInsertId()]);
     }
     if ($method === 'PUT') {
         if ($session['role'] !== 'superadmin') jsonResponse(['error' => 'Réservé au Super Admin'], 403);
         $d  = getInput();
         $id = (int)($d['id'] ?? 0);
-        $db->prepare("UPDATE comptes SET nom = ?, email = ?, password = ?, actif = ? WHERE id = ?")
-           ->execute([$d['nom'], strtolower($d['email']), $d['password'], (int)$d['actif'], $id]);
+        if (!empty($d['password'])) {
+            $hash = password_hash($d['password'], PASSWORD_DEFAULT);
+            $db->prepare("UPDATE comptes SET nom = ?, email = ?, password = ?, actif = ? WHERE id = ?")
+               ->execute([$d['nom'], strtolower($d['email']), $hash, (int)$d['actif'], $id]);
+        } else {
+            $db->prepare("UPDATE comptes SET nom = ?, email = ?, actif = ? WHERE id = ?")
+               ->execute([$d['nom'], strtolower($d['email']), (int)$d['actif'], $id]);
+        }
         jsonResponse(['ok' => true]);
     }
     if ($method === 'DELETE') {

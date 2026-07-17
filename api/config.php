@@ -1,18 +1,15 @@
 <?php
+
 // ══════════════════════════════════════
 //  config.php — Connexion MariaDB/MySQL (WAMP + XAMPP)
 // ══════════════════════════════════════
 define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
 define('DB_NAME', getenv('DB_NAME') ?: 'kaffrine');
-define('SUPER_ADMIN_PASS', getenv('SUPER_ADMIN_PASS') ?: 'ChangeMe2026');
 
 define('SESSION_DURATION', 8 * 3600);
-define('SUPER_ADMIN_EMAIL', 'superadmin@kaffrine.sn');
-define('SUPER_ADMIN_PASS',  'SuperAdmin2026');
-define('VIEWER_EMAIL', 'observateur@kaffrine.sn');
-define('VIEWER_PASS',  'View2026');
 
 function getDB(): PDO {
     static $pdo = null;
