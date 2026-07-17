@@ -267,13 +267,17 @@ async function delPerf(i) {
    BUREAU
 ══════════════════════════════════════ */
 let _bureau = {};
-async function loadBureau() { _bureau = await apiCall('bureau.php'); return _bureau; }
+async function loadBureau() {
+  const rows = await apiCall('bureau.php'); // tableau renvoyé par bureau.php
+  _bureau = {};
+  for (const r of rows) _bureau[r.poste_id] = r;
+  return _bureau;
+}
 function getBureau()        { return _bureau; }
-async function saveBureau(obj) {
-  for (const [poste_id, m] of Object.entries(obj)) {
-    await apiCall('bureau.php','POST',{poste_id,...m});
-  }
-  _bureau=obj; renderBureau();
+async function saveBureau(membre) {
+  await apiCall('bureau.php','POST',membre);
+  await loadBureau();
+  renderBureau();
 }
 async function vacantBureau(posteId) {
   if (!confirm('Retirer ce membre du poste ?')) return;
