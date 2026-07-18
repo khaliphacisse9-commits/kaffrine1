@@ -5,6 +5,10 @@
 // ══════════════════════════════════════
 define('DB_PASS', '');   // Mot de passe MySQL (vide par défaut sur XAMPP)
 define('DB_USER', 'root'); // Utilisateur MySQL
+<<<<<<< HEAD
+=======
+
+>>>>>>> 7aca3f47605211b2b3ea399c24b5bafc870e2232
 define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
 define('DB_USER', getenv('DB_USER') ?: 'root');
