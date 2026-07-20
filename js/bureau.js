@@ -7,21 +7,21 @@
 // Liste des postes du bureau — doit rester alignée avec LIBELLES_POSTES
 // et l'ordre FIELD(poste_id, ...) définis côté serveur dans api/bureau.php
 const POSTES_BUREAU = [
-  { id: 'president',                                label: 'Président',                                                          org: 'CRA' },
-  { id: 'vp1_formation_jeunes',                      label: '1er Vice-Président chargé de la formation des jeunes arbitres',      org: 'CRA' },
-  { id: 'vp2_detection_jeunes',                      label: '2ème Vice-Président chargé de la détection des jeunes arbitres',     org: 'CRA' },
-  { id: 'vp3_massification',                         label: '3ème Vice-Président chargé de la massification',                    org: 'CRA' },
-  { id: 'secretaire_general',                        label: 'Secrétaire Général',                                                 org: 'CRA' },
-  { id: 'secretaire_general_adjoint',                label: 'Secrétaire Général Adjoint',                                         org: 'CRA' },
-  { id: 'tresorier_general',                         label: 'Trésorier Général',                                                  org: 'CRA' },
-  { id: 'adjoint_tresorier_teckoff',                 label: 'Adjoint Trésorier chargé des paiements et collectes de Teck-off',    org: 'CRA' },
-  { id: 'president_commission_designation',          label: 'Président Commission de Désignation',                               org: 'CRA' },
-  { id: 'president_commission_formation_technique',  label: 'Président Commission de Formation Technique et des cours',          org: 'CRA' },
-  { id: 'president_commission_finance',              label: 'Président Commission Finance',                                       org: 'CRA' },
-  { id: 'president_commission_sociale',              label: 'Président Commission Sociale',                                       org: 'CRA' },
-  { id: 'presidente_commission_feminine',            label: 'Présidente Commission Féminine',                                     org: 'CRA' },
-  { id: 'president_commission_discipline',           label: 'Président Commission de Discipline',                                 org: 'CRA' },
-  { id: 'president_commission_organisation',         label: "Président Commission d'Organisation",                                org: 'CRA' },
+  { id: 'president',                                label: 'Président',                                                          org: 'S/CRA' },
+  { id: 'vp1_formation_jeunes',                      label: '1er Vice-Président chargé de la formation des jeunes arbitres',      org: 'S/CRA' },
+  { id: 'vp2_detection_jeunes',                      label: '2ème Vice-Président chargé de la détection des jeunes arbitres',     org: 'S/CRA' },
+  { id: 'vp3_massification',                         label: '3ème Vice-Président chargé de la massification',                    org: 'S/CRA' },
+  { id: 'secretaire_general',                        label: 'Secrétaire Général',                                                 org: 'S/CRA' },
+  { id: 'secretaire_general_adjoint',                label: 'Secrétaire Général Adjoint',                                         org: 'S/CRA' },
+  { id: 'tresorier_general',                         label: 'Trésorier Général',                                                  org: 'S/CRA' },
+  { id: 'adjoint_tresorier_teckoff',                 label: 'Adjoint Trésorier chargé des paiements et collectes de Teck-off',    org: 'S/CRA' },
+  { id: 'president_commission_designation',          label: 'Président Commission de Désignation',                               org: 'S/CRA' },
+  { id: 'president_commission_formation_technique',  label: 'Président Commission de Formation Technique et des cours',          org: 'S/CRA' },
+  { id: 'president_commission_finance',              label: 'Président Commission Finance',                                       org: 'S/CRA' },
+  { id: 'president_commission_sociale',              label: 'Président Commission Sociale',                                       org: 'S/CRA' },
+  { id: 'presidente_commission_feminine',            label: 'Présidente Commission Féminine',                                     org: 'S/CRA' },
+  { id: 'president_commission_discipline',           label: 'Président Commission de Discipline',                                 org: 'S/CRA' },
+  { id: 'president_commission_organisation',         label: "Président Commission d'Organisation",                                org: 'S/CRA' },
   { id: 'intendant',                                 label: 'Intendant',                                                          org: 'S/CRA' },
   { id: 'intendante_adjointe',                       label: 'Intendant(e) Adjoint(e)',                                            org: 'S/CRA' },
   { id: 'commission_sages',                          label: 'Commission des Sages',                                               org: 'S/CRA' },
@@ -65,7 +65,7 @@ function renderBureau() {
       const adjoints = m?.adjoints || [];
       return `<div class="bcard">
         <div class="bcard-top">
-          <span class="badge" style="background:${p.org === 'CRA' ? 'var(--goldbg)' : 'var(--border)'};color:${p.org === 'CRA' ? 'var(--gold)' : 'var(--muted)'};font-size:.62rem;font-weight:700">${p.org}</span>
+          <span class="badge" style="background:var(--goldbg);color:var(--gold);font-size:.62rem;font-weight:700">${p.org}</span>
         </div>
         <div class="bcard-poste">${p.label}</div>
         <div class="bcard-titulaire" style="color:${vacant ? 'var(--muted)' : 'inherit'}">${vacant ? '— Poste vacant —' : nom}</div>

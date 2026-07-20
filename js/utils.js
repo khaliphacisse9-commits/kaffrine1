@@ -123,7 +123,58 @@ function _pdfTable(doc,head,body){doc.autoTable({startY:40,head:[head],body,head
 
 function exportPDFArbitres(){const doc=_pdfInit();_pdfHeader(doc,'Liste des Arbitres');const arbs=getArbs(),progs=getProgs(),sems=getSems(),perfs=getPerfs();const body=arbs.map((a,i)=>{const tp=computeTaux(clePresence(a),progs);const ts=computeTauxSem(clePresence(a),sems);const pf=computePerf(clePresence(a),perfs,a.id);return[i+1,a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),tp.taux!==null?tp.taux+'%':'—',ts.taux!==null?ts.taux+'%':'—',pf.moyNote!==null?pf.moyNote+'/20':'—'];});_pdfTable(doc,['#','Prénom','Nom','Grade','Présence Matchs','Présence Séminaires','Note Moy.'],body);_pdfFooter(doc);doc.save('arbitres_kaffrine_'+_today()+'.pdf');toast('✅ PDF Arbitres téléchargé !');}
 
-function exportPDFBureau(){const doc=_pdfInit();_pdfHeader(doc,'Bureau CRA & S/CRA');const bureau=getBureau();const body=POSTES_BUREAU.map(p=>{const m=bureau[p.id];return[p.org,p.label,membreNom(m)!=='Poste vacant'?membreNom(m):'—',membreGrade(m)||'—',m?.dateDebut||'—',m?.tel||'—'];});_pdfTable(doc,['Organisation','Poste','Titulaire','Grade','Depuis','Téléphone'],body);_pdfFooter(doc);doc.save('bureau_cra_'+_today()+'.pdf');toast('✅ PDF Bureau téléchargé !');}
+function _imgFormat(dataUrl){if(!dataUrl)return'JPEG';if(dataUrl.startsWith('data:image/png'))return'PNG';if(dataUrl.startsWith('data:image/webp'))return'WEBP';return'JPEG';}
+
+function exportPDFBureau(){
+  const doc=_pdfInit('landscape');
+  _pdfHeader(doc,'Bureau CRA & S/CRA');
+  const bureau=getBureau();
+  const arbs=getArbs();
+
+  // Photo du titulaire, uniquement disponible quand le poste est occupé par un arbitre ayant une photo
+  const photos={};
+  POSTES_BUREAU.forEach(p=>{
+    const m=bureau[p.id];
+    let photoData=null;
+    if(m?.type_membre==='arbitre'&&m.arbitre_id){
+      const arb=arbs.find(a=>a.id===m.arbitre_id);
+      if(arb?.photo)photoData=arb.photo;
+    }
+    photos[p.id]=photoData;
+  });
+
+  const body=POSTES_BUREAU.map(p=>{
+    const m=bureau[p.id];
+    return['',p.org,p.label,membreNom(m)!=='Poste vacant'?membreNom(m):'—',membreGrade(m)||'—',m?.dateDebut||'—',m?.tel||'—'];
+  });
+
+  doc.autoTable({
+    startY:40,
+    head:[['Photo','Organisation','Poste','Titulaire','Grade','Depuis','Téléphone']],
+    body,
+    headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},
+    alternateRowStyles:{fillColor:[240,248,240]},
+    styles:{fontSize:8,cellPadding:3,overflow:'linebreak',minCellHeight:14},
+    columnStyles:{0:{cellWidth:16}},
+    margin:{left:10,right:10},
+    didDrawCell(data){
+      if(data.section==='body'&&data.column.index===0){
+        const p=POSTES_BUREAU[data.row.index];
+        const photoData=photos[p.id];
+        if(photoData){
+          const size=10;
+          const x=data.cell.x+(data.cell.width-size)/2;
+          const y=data.cell.y+(data.cell.height-size)/2;
+          try{doc.addImage(photoData,_imgFormat(photoData),x,y,size,size);}catch(e){}
+        }
+      }
+    }
+  });
+
+  _pdfFooter(doc);
+  doc.save('bureau_cra_'+_today()+'.pdf');
+  toast('✅ PDF Bureau téléchargé !');
+}
 
 function exportPDFProgrammes(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Programmes & Désignations');const body=getProgs().map(p=>{const d=p.designation||{};return[p.date||'—',p.heure||'—',p.titre||'—',p.lieu||'—',d.ac?nomDepuisCle(d.ac):'—',d.aa1?nomDepuisCle(d.aa1):'—',d.aa2?nomDepuisCle(d.aa2):'—',d.arb4?nomDepuisCle(d.arb4):'—',p.inspecteur?.nom||'—'];});_pdfTable(doc,['Date','Heure','Titre','Lieu','AC','AA1','AA2','4e Arb.','Inspecteur'],body);_pdfFooter(doc);doc.save('programmes_'+_today()+'.pdf');toast('✅ PDF Programmes téléchargé !');}
 
