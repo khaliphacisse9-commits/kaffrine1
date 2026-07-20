@@ -1,0 +1,13 @@
+# En-têtes CORS — protégés par IfModule pour éviter une erreur 500
+# si mod_headers n'est pas activé sur WAMP (Menu WAMP > Apache > Modules Apache > headers_module)
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Origin "*"
+  Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+  Header always set Access-Control-Allow-Headers "Content-Type, X-Session-Token"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_METHOD} OPTIONS
+  RewriteRule ^(.*)$ $1 [R=200,L]
+</IfModule>

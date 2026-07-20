@@ -1,0 +1,18 @@
+# Logs
+*.log
+
+# Fichiers d'environnement / secrets
+.env
+.env.local
+
+# Dossiers système
+node_modules/
+vendor/
+
+# Fichiers temporaires
+*.tmp
+*.bak
+
+# Fichiers système OS
+.DS_Store
+Thumbs.db
