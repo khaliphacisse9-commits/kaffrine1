@@ -236,6 +236,25 @@
   </div>
 </div>
 
+<!-- ══ MODAL SÉLECTION EXPORT SÉMINAIRES ══ -->
+<div class="modal-bg" id="semExportModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">📄 Choisir les séminaires à exporter</div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <button class="btn btn-ghost" style="flex:1" onclick="_semExportToggleAll(true)">✅ Tout cocher</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="_semExportToggleAll(false)">◻️ Tout décocher</button>
+    </div>
+
+    <div id="semExportList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="_confirmExportPDFSem()">📄 Télécharger le PDF</button>
+      <button class="btn btn-ghost" onclick="closeSemExportModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ HEADER ══ -->
 <header>
   <div class="brand">
@@ -508,7 +527,7 @@
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
       <button class="btn btn-ghost" onclick="exportCSVSem()">📥 Exporter CSV</button>
-      <button class="btn btn-ghost" onclick="exportPDFSem()">📄 Télécharger PDF</button>
+      <button class="btn btn-ghost" onclick="openSemExportModal()">📄 Télécharger PDF</button>
     </div>
   </div>
 </div>

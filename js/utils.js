@@ -265,7 +265,51 @@ function _confirmExportPDFProgrammes(){
   closeProgExportModal();
 }
 
-function exportPDFSem(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Séminaires & Formations');const sems=getSems(),arbs=getArbs();const body=[];sems.forEach(s=>{arbs.forEach(a=>{const pr=s.presence?.find(x=>x.nom===clePresence(a));body.push([s.date||'—',s.titre||'—',s.theme||'—',s.formateur||'—',a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),pr?.present?'Présent':'Absent']);});});doc.autoTable({startY:40,head:[['Date','Séminaire','Thème','Formateur','Prénom','Nom','Grade','Présence']],body,headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,248,240]},styles:{fontSize:8,cellPadding:3},margin:{left:10,right:10},didParseCell(d){if(d.section==='body'&&d.column.index===7){d.cell.styles.textColor=d.cell.raw==='Présent'?[10,92,30]:[200,30,30];d.cell.styles.fontStyle='bold';}}});_pdfFooter(doc);_savePDF(doc,'seminaires_'+_today()+'.pdf');toast('✅ PDF Séminaires téléchargé !');}
+/* ══ EXPORT PDF SÉMINAIRES — avec sélection manuelle ══ */
+let _semExportSelection = new Set();
+function openSemExportModal(){
+  const sems = getSems().slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!sems.length){ toast("Aucun séminaire à exporter.", "err"); return; }
+  _semExportSelection = new Set(sems.map(s=>s.id));
+  const list = document.getElementById('semExportList');
+  list.innerHTML = sems.map(s=>{
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+      <input type="checkbox" data-sem-id="${s.id}" checked onchange="_semExportOnToggle(${s.id},this.checked)">
+      <span style="flex:1">
+        <strong>${s.titre||'—'}</strong><br>
+        <small style="color:var(--muted,#777)">${s.date||'—'} · ${s.lieu||'—'}${s.theme?' · '+s.theme:''}${s.formateur?' · '+s.formateur:''}</small>
+      </span>
+    </label>`;
+  }).join('');
+  document.getElementById('semExportModal').classList.add('open');
+}
+function closeSemExportModal(){
+  document.getElementById('semExportModal').classList.remove('open');
+}
+function _semExportOnToggle(id,checked){
+  if(checked) _semExportSelection.add(id); else _semExportSelection.delete(id);
+}
+function _semExportToggleAll(state){
+  document.querySelectorAll('#semExportList input[type=checkbox]').forEach(cb=>{
+    cb.checked = state;
+    const id = Number(cb.dataset.semId);
+    if(state) _semExportSelection.add(id); else _semExportSelection.delete(id);
+  });
+}
+function _confirmExportPDFSem(){
+  if(!_semExportSelection.size){ toast("Sélectionnez au moins un séminaire.", "err"); return; }
+  const sems = getSems().filter(s=>_semExportSelection.has(s.id));
+  const arbs=getArbs();
+  const doc=_pdfInit('landscape');
+  _pdfHeader(doc,'Séminaires & Formations');
+  const body=[];
+  sems.forEach(s=>{arbs.forEach(a=>{const pr=s.presence?.find(x=>x.nom===clePresence(a));body.push([s.date||'—',s.titre||'—',s.theme||'—',s.formateur||'—',a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),pr?.present?'Présent':'Absent']);});});
+  doc.autoTable({startY:40,head:[['Date','Séminaire','Thème','Formateur','Prénom','Nom','Grade','Présence']],body,headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,248,240]},styles:{fontSize:8,cellPadding:3},margin:{left:10,right:10},didParseCell(d){if(d.section==='body'&&d.column.index===7){d.cell.styles.textColor=d.cell.raw==='Présent'?[10,92,30]:[200,30,30];d.cell.styles.fontStyle='bold';}}});
+  _pdfFooter(doc);
+  _savePDF(doc,'seminaires_'+_today()+'.pdf');
+  toast('✅ PDF Séminaires téléchargé !');
+  closeSemExportModal();
+}
 
 function exportPDFPerf(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Performances Terrain');const arbs=getArbs();const body=getPerfs().map(p=>{const arb=arbs.find(a=>a.id===p.arbitre_id)||arbs.find(a=>clePresence(a)===p.arbitre);return[p.date||'—',arb?nomAffiche(arb):'—',arb?gradeLabel(arb.grade):'—',p.match||'—',p.note!==null&&p.note!==''?p.note+'/20':'—',p.matchs||0,p.cartons||0,p.commentaire||'—'];});_pdfTable(doc,['Date','Arbitre','Grade','Match / Événement','Note','Matchs','Cartons','Commentaire'],body);_pdfFooter(doc);_savePDF(doc,'performances_'+_today()+'.pdf');toast('✅ PDF Performances téléchargé !');}
 
