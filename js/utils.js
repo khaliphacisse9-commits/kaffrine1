@@ -32,7 +32,47 @@ function resolveEvenementKey(p){
 }
 function compressImage(file,cb){const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement("canvas");const S=300;let w=img.width,h=img.height;if(w>h){h*=S/w;w=S;}else{w*=S/h;h=S;}c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);cb(c.toDataURL("image/jpeg",0.75));};img.src=e.target.result;};r.readAsDataURL(file);}
 function _today(){return new Date().toISOString().slice(0,10);}
-function _dl(csv,filename){const l=document.createElement("a");l.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));l.download=filename;l.click();}
+function _dl(csv,filename){
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const l=document.createElement("a");
+  l.href=url;
+  l.download=filename;
+  l.style.display="none";
+  document.body.appendChild(l);
+  l.click();
+  setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(url);},1000);
+}
+/* Secours : ouvre le fichier dans un nouvel onglet si l'attribut download est ignoré
+   (fréquent dans certains navigateurs mobiles / webviews) */
+function _dlFallbackOpen(blobOrUrl,filename){
+  try{
+    const url = blobOrUrl instanceof Blob ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+    const w = window.open(url, "_blank");
+    if(!w){ toast("⚠️ Bloqué par le navigateur : autorisez les pop-ups pour "+filename, "err"); }
+  }catch(e){ toast("⚠️ Impossible d'ouvrir le fichier automatiquement.", "err"); }
+}
+/* Remplace doc.save(filename) de jsPDF : plus fiable sur mobile/webview.
+   1) tente le téléchargement direct via lien attaché au DOM
+   2) si ça échoue (exception ou navigateur qui ignore "download"), ouvre le PDF
+      dans un nouvel onglet pour que l'utilisateur puisse l'enregistrer via
+      le menu "Partager" / "Imprimer en PDF" / long-appui. */
+function _savePDF(doc,filename){
+  try{
+    const blob=doc.output('blob');
+    const url=URL.createObjectURL(blob);
+    const l=document.createElement("a");
+    l.href=url;
+    l.download=filename;
+    l.style.display="none";
+    document.body.appendChild(l);
+    l.click();
+    setTimeout(()=>{document.body.removeChild(l);URL.revokeObjectURL(url);},1500);
+  }catch(e){
+    try{ doc.output('dataurlnewwindow'); }
+    catch(e2){ toast("⚠️ Téléchargement impossible : ouvrez ce PDF depuis un autre navigateur.", "err"); }
+  }
+}
 
 function exportCSV(){let csv="\uFEFFPrénom,Nom,Grade,Programme,Date,Lieu,Présence\n";getProgs().forEach(p=>{getArbs().forEach(a=>{const cle=clePresence(a);const pr=p.presence?.find(x=>x.nom===cle);csv+=`"${a.prenom||""}","${a.nom||""}","${gradeLabel(a.grade)}","${p.titre}","${p.date}","${p.lieu||""}","${pr?.present?"Présent":"Absent"}"\n`;});});_dl(csv,`presences_matchs_${_today()}.csv`);}
 function exportCSVSem(){let csv="\uFEFFPrénom,Nom,Grade,Séminaire,Date,Lieu,Thème,Formateur,Présence\n";getSems().forEach(s=>{getArbs().forEach(a=>{const cle=clePresence(a);const pr=s.presence?.find(x=>x.nom===cle);csv+=`"${a.prenom||""}","${a.nom||""}","${gradeLabel(a.grade)}","${s.titre}","${s.date}","${s.lieu||""}","${s.theme||""}","${s.formateur||""}","${pr?.present?"Présent":"Absent"}"\n`;});});_dl(csv,`presences_seminaires_${_today()}.csv`);}
@@ -121,7 +161,7 @@ function _pdfFooter(doc){
 }
 function _pdfTable(doc,head,body){doc.autoTable({startY:40,head:[head],body,headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,248,240]},styles:{fontSize:8,cellPadding:3,overflow:'linebreak'},margin:{left:10,right:10}});}
 
-function exportPDFArbitres(){const doc=_pdfInit();_pdfHeader(doc,'Liste des Arbitres');const arbs=getArbs(),progs=getProgs(),sems=getSems(),perfs=getPerfs();const body=arbs.map((a,i)=>{const tp=computeTaux(clePresence(a),progs);const ts=computeTauxSem(clePresence(a),sems);const pf=computePerf(clePresence(a),perfs,a.id);return[i+1,a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),tp.taux!==null?tp.taux+'%':'—',ts.taux!==null?ts.taux+'%':'—',pf.moyNote!==null?pf.moyNote+'/20':'—'];});_pdfTable(doc,['#','Prénom','Nom','Grade','Présence Matchs','Présence Séminaires','Note Moy.'],body);_pdfFooter(doc);doc.save('arbitres_kaffrine_'+_today()+'.pdf');toast('✅ PDF Arbitres téléchargé !');}
+function exportPDFArbitres(){const doc=_pdfInit();_pdfHeader(doc,'Liste des Arbitres');const arbs=getArbs(),progs=getProgs(),sems=getSems(),perfs=getPerfs();const body=arbs.map((a,i)=>{const tp=computeTaux(clePresence(a),progs);const ts=computeTauxSem(clePresence(a),sems);const pf=computePerf(clePresence(a),perfs,a.id);return[i+1,a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),tp.taux!==null?tp.taux+'%':'—',ts.taux!==null?ts.taux+'%':'—',pf.moyNote!==null?pf.moyNote+'/20':'—'];});_pdfTable(doc,['#','Prénom','Nom','Grade','Présence Matchs','Présence Séminaires','Note Moy.'],body);_pdfFooter(doc);_savePDF(doc,'arbitres_kaffrine_'+_today()+'.pdf');toast('✅ PDF Arbitres téléchargé !');}
 
 function _imgFormat(dataUrl){if(!dataUrl)return'JPEG';if(dataUrl.startsWith('data:image/png'))return'PNG';if(dataUrl.startsWith('data:image/webp'))return'WEBP';return'JPEG';}
 
@@ -172,14 +212,61 @@ function exportPDFBureau(){
   });
 
   _pdfFooter(doc);
-  doc.save('bureau_cra_'+_today()+'.pdf');
+  _savePDF(doc,'bureau_cra_'+_today()+'.pdf');
   toast('✅ PDF Bureau téléchargé !');
 }
 
-function exportPDFProgrammes(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Programmes & Désignations');const body=getProgs().map(p=>{const d=p.designation||{};return[p.date||'—',p.heure||'—',p.titre||'—',p.lieu||'—',d.ac?nomDepuisCle(d.ac):'—',d.aa1?nomDepuisCle(d.aa1):'—',d.aa2?nomDepuisCle(d.aa2):'—',d.arb4?nomDepuisCle(d.arb4):'—',p.inspecteur?.nom||'—'];});_pdfTable(doc,['Date','Heure','Titre','Lieu','AC','AA1','AA2','4e Arb.','Inspecteur'],body);_pdfFooter(doc);doc.save('programmes_'+_today()+'.pdf');toast('✅ PDF Programmes téléchargé !');}
+/* ══ EXPORT PDF PROGRAMMES — avec sélection manuelle ══ */
+let _progExportSelection = new Set();
+function openProgExportModal(){
+  const progs = getProgs().slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!progs.length){ toast("Aucun programme à exporter.", "err"); return; }
+  _progExportSelection = new Set(progs.map(p=>p.id));
+  const list = document.getElementById('progExportList');
+  list.innerHTML = progs.map(p=>{
+    const d = p.designation||{};
+    const desig = [d.ac?nomDepuisCle(d.ac):null, d.aa1?nomDepuisCle(d.aa1):null].filter(Boolean).join(', ');
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer">
+      <input type="checkbox" data-prog-id="${p.id}" checked onchange="_progExportOnToggle(${p.id},this.checked)">
+      <span style="flex:1">
+        <strong>${p.titre||'—'}</strong><br>
+        <small style="color:var(--muted,#777)">${p.date||'—'} ${p.heure||''} · ${p.lieu||'—'}${desig?' · '+desig:''}</small>
+      </span>
+    </label>`;
+  }).join('');
+  document.getElementById('progExportModal').classList.add('open');
+}
+function closeProgExportModal(){
+  document.getElementById('progExportModal').classList.remove('open');
+}
+function _progExportOnToggle(id,checked){
+  if(checked) _progExportSelection.add(id); else _progExportSelection.delete(id);
+}
+function _progExportToggleAll(state){
+  document.querySelectorAll('#progExportList input[type=checkbox]').forEach(cb=>{
+    cb.checked = state;
+    const id = Number(cb.dataset.progId);
+    if(state) _progExportSelection.add(id); else _progExportSelection.delete(id);
+  });
+}
+function _confirmExportPDFProgrammes(){
+  if(!_progExportSelection.size){ toast("Sélectionnez au moins un programme.", "err"); return; }
+  const selected = getProgs().filter(p=>_progExportSelection.has(p.id));
+  const doc=_pdfInit('landscape');
+  _pdfHeader(doc,'Programmes & Désignations');
+  const body=selected.map(p=>{
+    const d=p.designation||{};
+    return[p.date||'—',p.heure||'—',p.titre||'—',p.lieu||'—',d.ac?nomDepuisCle(d.ac):'—',d.aa1?nomDepuisCle(d.aa1):'—',d.aa2?nomDepuisCle(d.aa2):'—',d.arb4?nomDepuisCle(d.arb4):'—',p.inspecteur?.nom||'—'];
+  });
+  _pdfTable(doc,['Date','Heure','Titre','Lieu','AC','AA1','AA2','4e Arb.','Inspecteur'],body);
+  _pdfFooter(doc);
+  _savePDF(doc,'programmes_'+_today()+'.pdf');
+  toast('✅ PDF Programmes téléchargé !');
+  closeProgExportModal();
+}
 
-function exportPDFSem(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Séminaires & Formations');const sems=getSems(),arbs=getArbs();const body=[];sems.forEach(s=>{arbs.forEach(a=>{const pr=s.presence?.find(x=>x.nom===clePresence(a));body.push([s.date||'—',s.titre||'—',s.theme||'—',s.formateur||'—',a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),pr?.present?'Présent':'Absent']);});});doc.autoTable({startY:40,head:[['Date','Séminaire','Thème','Formateur','Prénom','Nom','Grade','Présence']],body,headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,248,240]},styles:{fontSize:8,cellPadding:3},margin:{left:10,right:10},didParseCell(d){if(d.section==='body'&&d.column.index===7){d.cell.styles.textColor=d.cell.raw==='Présent'?[10,92,30]:[200,30,30];d.cell.styles.fontStyle='bold';}}});_pdfFooter(doc);doc.save('seminaires_'+_today()+'.pdf');toast('✅ PDF Séminaires téléchargé !');}
+function exportPDFSem(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Séminaires & Formations');const sems=getSems(),arbs=getArbs();const body=[];sems.forEach(s=>{arbs.forEach(a=>{const pr=s.presence?.find(x=>x.nom===clePresence(a));body.push([s.date||'—',s.titre||'—',s.theme||'—',s.formateur||'—',a.prenom||'',(a.nom||'').toUpperCase(),gradeLabel(a.grade),pr?.present?'Présent':'Absent']);});});doc.autoTable({startY:40,head:[['Date','Séminaire','Thème','Formateur','Prénom','Nom','Grade','Présence']],body,headStyles:{fillColor:[10,92,30],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,248,240]},styles:{fontSize:8,cellPadding:3},margin:{left:10,right:10},didParseCell(d){if(d.section==='body'&&d.column.index===7){d.cell.styles.textColor=d.cell.raw==='Présent'?[10,92,30]:[200,30,30];d.cell.styles.fontStyle='bold';}}});_pdfFooter(doc);_savePDF(doc,'seminaires_'+_today()+'.pdf');toast('✅ PDF Séminaires téléchargé !');}
 
-function exportPDFPerf(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Performances Terrain');const arbs=getArbs();const body=getPerfs().map(p=>{const arb=arbs.find(a=>a.id===p.arbitre_id)||arbs.find(a=>clePresence(a)===p.arbitre);return[p.date||'—',arb?nomAffiche(arb):'—',arb?gradeLabel(arb.grade):'—',p.match||'—',p.note!==null&&p.note!==''?p.note+'/20':'—',p.matchs||0,p.cartons||0,p.commentaire||'—'];});_pdfTable(doc,['Date','Arbitre','Grade','Match / Événement','Note','Matchs','Cartons','Commentaire'],body);_pdfFooter(doc);doc.save('performances_'+_today()+'.pdf');toast('✅ PDF Performances téléchargé !');}
+function exportPDFPerf(){const doc=_pdfInit('landscape');_pdfHeader(doc,'Performances Terrain');const arbs=getArbs();const body=getPerfs().map(p=>{const arb=arbs.find(a=>a.id===p.arbitre_id)||arbs.find(a=>clePresence(a)===p.arbitre);return[p.date||'—',arb?nomAffiche(arb):'—',arb?gradeLabel(arb.grade):'—',p.match||'—',p.note!==null&&p.note!==''?p.note+'/20':'—',p.matchs||0,p.cartons||0,p.commentaire||'—'];});_pdfTable(doc,['Date','Arbitre','Grade','Match / Événement','Note','Matchs','Cartons','Commentaire'],body);_pdfFooter(doc);_savePDF(doc,'performances_'+_today()+'.pdf');toast('✅ PDF Performances téléchargé !');}
 
-function exportPDFStats(){const doc=_pdfInit();_pdfHeader(doc,'Statistiques Générales');const arbs=getArbs(),progs=getProgs(),sems=getSems(),perfs=getPerfs();const data=arbs.map(a=>{const tp=computeTaux(clePresence(a),progs);const ts=computeTauxSem(clePresence(a),sems);const pf=computePerf(clePresence(a),perfs,a.id);return{a,tp,ts,pf};}).sort((x,y)=>(y.tp.taux??-1)-(x.tp.taux??-1));const medals=['Or','Argent','Bronze'];const body=data.map(({a,tp,ts,pf},i)=>[i<3?medals[i]:i+1,nomAffiche(a),gradeLabel(a.grade),tp.taux!==null?tp.taux+'%':'—',tp.present+'/'+tp.total,ts.taux!==null?ts.taux+'%':'—',ts.present+'/'+ts.total,pf.moyNote!==null?pf.moyNote+'/20':'—',pf.totalMatchs,pf.totalCartons]);_pdfTable(doc,['','Arbitre','Grade','Taux M.','Matchs','Taux S.','Sémin.','Note Moy.','Total','Cartons'],body);_pdfFooter(doc);doc.save('statistiques_'+_today()+'.pdf');toast('✅ PDF Statistiques téléchargé !');}
+function exportPDFStats(){const doc=_pdfInit();_pdfHeader(doc,'Statistiques Générales');const arbs=getArbs(),progs=getProgs(),sems=getSems(),perfs=getPerfs();const data=arbs.map(a=>{const tp=computeTaux(clePresence(a),progs);const ts=computeTauxSem(clePresence(a),sems);const pf=computePerf(clePresence(a),perfs,a.id);return{a,tp,ts,pf};}).sort((x,y)=>(y.tp.taux??-1)-(x.tp.taux??-1));const medals=['Or','Argent','Bronze'];const body=data.map(({a,tp,ts,pf},i)=>[i<3?medals[i]:i+1,nomAffiche(a),gradeLabel(a.grade),tp.taux!==null?tp.taux+'%':'—',tp.present+'/'+tp.total,ts.taux!==null?ts.taux+'%':'—',ts.present+'/'+ts.total,pf.moyNote!==null?pf.moyNote+'/20':'—',pf.totalMatchs,pf.totalCartons]);_pdfTable(doc,['','Arbitre','Grade','Taux M.','Matchs','Taux S.','Sémin.','Note Moy.','Total','Cartons'],body);_pdfFooter(doc);_savePDF(doc,'statistiques_'+_today()+'.pdf');toast('✅ PDF Statistiques téléchargé !');}

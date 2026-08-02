@@ -217,6 +217,25 @@
   </div>
 </div>
 
+<!-- ══ MODAL SÉLECTION EXPORT PROGRAMMES ══ -->
+<div class="modal-bg" id="progExportModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">📄 Choisir les programmes à exporter</div>
+
+    <div style="display:flex;gap:10px;margin-bottom:12px">
+      <button class="btn btn-ghost" style="flex:1" onclick="_progExportToggleAll(true)">✅ Tout cocher</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="_progExportToggleAll(false)">◻️ Tout décocher</button>
+    </div>
+
+    <div id="progExportList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="_confirmExportPDFProgrammes()">📄 Télécharger le PDF</button>
+      <button class="btn btn-ghost" onclick="closeProgExportModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ HEADER ══ -->
 <header>
   <div class="brand">
@@ -274,7 +293,7 @@
   <div class="dash-body">
     <div class="dash-grid">
       <div class="widget">
-        <div class="whead"><span class="wtitle">🏅 Bureau CRA</span><span class="wlink" onclick="goTo('p-bureau',getTabs()[1])">Voir tout →</span></div>
+        <div class="whead"><span class="wtitle">🏅 Bureau S/CRA</span><span class="wlink" onclick="goTo('p-bureau',getTabs()[1])">Voir tout →</span></div>
         <div id="wBureau"><div class="emptyw">Aucun membre affecté.</div></div>
       </div>
       <div class="widget">
@@ -297,7 +316,7 @@
 <div class="page" id="p-bureau">
   <div class="sect">
     <div class="sect-head">
-      <div class="sect-title">🏅 Bureau <span>CRA & S/CRA</span></div>
+      <div class="sect-title">🏅 Bureau <span>S/CRA</span></div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" onclick="exportCSVBureau()">📥 Exporter CSV</button>
         <button class="btn btn-ghost" onclick="exportPDFBureau()">📄 Télécharger PDF</button>
@@ -354,7 +373,7 @@
   <div class="sect">
     <div class="sect-head">
       <div class="sect-title">⚽ Programmes & <span>Désignations</span></div>
-      <button class="btn btn-ghost" onclick="exportPDFProgrammes()">📄 Télécharger PDF</button>
+      <button class="btn btn-ghost" onclick="openProgExportModal()">📄 Télécharger PDF</button>
     </div>
     <div class="form-panel admin-only">
       <h4>➕ Nouveau programme</h4>
