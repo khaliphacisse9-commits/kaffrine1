@@ -338,7 +338,7 @@
       <div class="sect-title">🏅 Bureau <span>S/CRA</span></div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost" onclick="exportCSVBureau()">📥 Exporter CSV</button>
-        <button class="btn btn-ghost" onclick="exportPDFBureau()">📄 Télécharger PDF</button>
+        <button class="btn btn-ghost admin-only" onclick="exportPDFBureau()">📄 Télécharger PDF</button>
       </div>
     </div>
 
@@ -365,7 +365,7 @@
     <div class="sect-head">
       <div class="sect-title">Liste des <span>Arbitres</span></div>
       <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost" onclick="exportPDFArbitres()">📄 Télécharger PDF</button>
+        <button class="btn btn-ghost admin-only" onclick="exportPDFArbitres()">📄 Télécharger PDF</button>
         <button class="btn btn-primary admin-only" onclick="openModal()">+ Ajouter</button>
       </div>
     </div>
@@ -527,7 +527,7 @@
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
       <button class="btn btn-ghost" onclick="exportCSVSem()">📥 Exporter CSV</button>
-      <button class="btn btn-ghost" onclick="openSemExportModal()">📄 Télécharger PDF</button>
+      <button class="btn btn-ghost admin-only" onclick="openSemExportModal()">📄 Télécharger PDF</button>
     </div>
   </div>
 </div>
@@ -556,7 +556,7 @@
     <div id="perfList"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px">
       <button class="btn btn-ghost" onclick="exportCSVPerf()">📥 Exporter CSV</button>
-      <button class="btn btn-ghost" onclick="exportPDFPerf()">📄 Télécharger PDF</button>
+      <button class="btn btn-ghost admin-only" onclick="exportPDFPerf()">📄 Télécharger PDF</button>
     </div>
   </div>
 </div>
@@ -566,7 +566,7 @@
   <div class="sect">
     <div class="sect-head">
       <div class="sect-title">📊 <span>Statistiques</span></div>
-      <button class="btn btn-ghost" onclick="exportPDFStats()">📄 Télécharger PDF</button>
+      <button class="btn btn-ghost admin-only" onclick="exportPDFStats()">📄 Télécharger PDF</button>
     </div>
     <div class="stats-summary" id="statsSummary"></div>
     <div class="stats-grid" id="statsGrid"></div>
