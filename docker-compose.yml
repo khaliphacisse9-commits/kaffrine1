@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: kaffrine_user
+      DB_PASS: change_moi
+      DB_NAME: kaffrine
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: change_moi_root
+      MYSQL_DATABASE: kaffrine
+      MYSQL_USER: kaffrine_user
+      MYSQL_PASSWORD: change_moi
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./kaffrine.sql:/docker-entrypoint-initdb.d/kaffrine.sql
+    ports:
+      - "3306:3306"
+
+volumes:
+  db_data:
